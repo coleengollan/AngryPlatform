@@ -4,43 +4,87 @@ using UnityEngine;
 
 public class Chicken : MonoBehaviour {
 
-    public Rigidbody2D rb;
-    public Rigidbody2D slingshot;
-    private bool isDragged= false;
+    private Rigidbody2D rb;
+    private SpringJoint2D springJoint;
+
+    public GameObject slingshot;
+    private SlingshotScript slingshotScript;
+
     public float letGoDelay = .15f;
     public float maxDrag = 1f;
+    public float cameraOffset = .92f;
 
+
+    public bool isDragged = false;
+    public bool isFiring = false;
+
+    public bool watchKiniematic = false;
+
+    public Vector3 beforeFiringPosition;
+
+    private void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        slingshotScript = slingshot.GetComponent<SlingshotScript>();
+        springJoint = GetComponent<SpringJoint2D>();
+    }
 
     void Update()
     {
-        if (isDragged)
+        watchKiniematic = rb.isKinematic;
+
+        if (isDragged && !isFiring)
         {
+            beforeFiringPosition = this.transform.position;
+
             Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-            if (Vector3.Distance(mousePos, slingshot.position) > maxDrag)
-                rb.position = slingshot.position + (mousePos - slingshot.position).normalized * maxDrag;
-            else
+            if (Vector3.Distance(mousePos, slingshot.transform.position) > maxDrag) {
+                rb.position = (Vector2)slingshot.transform.position + (mousePos - (Vector2)slingshot.transform.position).normalized * maxDrag;
+            } else { 
                 rb.position = mousePos;
+            }
+        }
+
+        if (rb.velocity == Vector2.zero && isFiring)
+        {
+            Debug.Log("chicken stopped");
+
+            Camera.main.transform.position += this.transform.position - beforeFiringPosition;
+
+            isFiring = false;
+
+            rb.position += Vector2.up * 1;
+
+            slingshotScript.setNewPosition(rb.position);
+        }
+
+        if (!isFiring)
+        {
+            springJoint.enabled = true;
         }
     }
 
     void OnMouseDown ()
     {
-        isDragged = true;
+
         rb.isKinematic = true;
+        isDragged = true;
     }
 
     void OnMouseUp()
     {
-        isDragged = false;
+
+        isFiring = true;
         rb.isKinematic = false;
+
+        isDragged = false;
         StartCoroutine(LetGo());
     }
      IEnumerator LetGo ()
     {
         yield return new WaitForSeconds(letGoDelay);
-        GetComponent<SpringJoint2D>().enabled = false;
-        this.enabled = false;
+        springJoint.enabled = false;
     }
 
 
